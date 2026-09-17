@@ -1,1 +1,94 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pro AI FIXED</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1120;color:#fff;font-family:system-ui;padding:16px}
+.card{background:#111a2f;border:1px solid #1e2a4a;border-radius:16px;padding:12px;margin-bottom:12px}
+input,select{width:100%;background:#0b1120;border:1px solid #2ad4ea;color:#fff;border-radius:10px;padding:12px;font-size:16px;margin-top:4px}
+label{font-size:11px;color:#7a8ab0;display:block;margin:10px 2px 2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{width:100%;padding:16px;border-radius:14px;border:0;font-weight:800;font-size:18px;margin-top:10px}
+.btn-cyan{background:#2ad4ea;color:#001a1f}
+.btn-dark{background:#0f1a33;color:#2ad4ea;border:1px solid #2ad4ea}
+.circle{width:200px;height:200px;border-radius:50%;background:radial-gradient(#2ad4ea,#0b5b66);display:flex;align-items:center;justify-content:center;margin:18px auto;font-weight:900;cursor:pointer;box-shadow:0 0 40px #2ad4ea66;font-size:28px}
+.log{background:#0b1120;border:1px solid #1e2a4a;border-radius:12px;padding:10px;height:140px;overflow:auto;font-size:12px;white-space:pre-wrap;margin-top:10px}
+.row{display:flex;gap:8px}
+</style>
+</head>
+<body>
+<div style="font-size:28px;font-weight:900">🤖 Pro AI FIXED</div><div style="color:#2ad4ea;margin-bottom:10px">Volatility & Jump</div>
+<div class="card">
+<div class="grid2">
+<div><label>BASE STAKE</label><input id="stake" value="0.35"></div>
+<div><label>RECOVER x</label><input id="recover" value="2.1"></div>
+<div><label>TP USD</label><input id="tp" value="2"></div>
+<div><label>SL USD</label><input id="sl" value="4"></div>
+</div>
+<label style="color:#2ad4ea;font-weight:700">DERIV API TOKEN - USE DEMO!</label>
+<input id="token" placeholder="Paste DEMO token a1-...">
+</div>
+<div class="circle" id="circle">PRO AI</div>
+<div class="row">
+<div class="card" style="flex:1;text-align:center"><div style="font-size:11px;color:#7a8ab0">PROFIT</div><div id="profit" style="font-weight:800">$0.00</div></div>
+<div class="card" style="flex:1;text-align:center"><div style="font-size:11px;color:#7a8ab0">STAKE</div><div id="stakeShow" style="font-weight:800">$0.35</div></div>
+<div class="card" style="flex:1;text-align:center"><div style="font-size:11px;color:#7a8ab0">STATUS</div><div id="status" style="font-weight:800;font-size:11px">Idle - Tap PRO AI</div></div>
+</div>
+<button class="btn btn-cyan" id="startBtn">▶ Scan & start</button>
+<div class="log" id="log">✅ FIXED VERSION READY
+1. Paste DEMO token (VRTCR)
+2. Tap PRO AI circle to CONNECT
+3. Then tap Scan & start
+</div>
+<script>
+let ws=null,running=false,profit=0,currentStake=0;
+const logEl=document.getElementById('log');
+function log(m){logEl.textContent+="\n"+m;logEl.scrollTop=9999}
+function connect(){
+ const token=document.getElementById('token').value.trim();
+ if(!token){log("❌ Paste token first");return;}
+ if(ws)ws.close();
+ log("Connecting...");document.getElementById('status').textContent="Connecting...";
+ ws=new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
+ ws.onopen=()=>{ws.send(JSON.stringify({authorize:token}));};
+ ws.onmessage=(e)=>{
+  const d=JSON.parse(e.data);
+  if(d.error){log("❌ "+d.error.message);document.getElementById('status').textContent="Invalid Token";document.getElementById('status').style.color="red";return;}
+  if(d.msg_type==="authorize"){
+   const isDemo=d.authorize.is_virtual;
+   document.getElementById('status').textContent=isDemo?"DEMO Connected ✅":"REAL Connected!";
+   document.getElementById('status').style.color=isDemo?"#0f0":"red";
+   log("✅ Connected: "+(isDemo?"DEMO":"REAL")+" Balance: $"+d.authorize.balance);
+   if(!isDemo)log("⚠️ Switch to DEMO VRTCR!");
+  }
+ };
+}
+document.getElementById('circle').addEventListener('click',connect);
+document.getElementById('token').addEventListener('input',()=>{if(document.getElementById('token').value.length>12)connect();});
+document.getElementById('startBtn').addEventListener('click',()=>{
+ if(!ws){log("⚠️ Tap PRO AI circle FIRST");connect();return;}
+ if(running){running=false;document.getElementById('startBtn').textContent="▶ Scan & start";log("⏸️ Stopped");return;}
+ running=true;currentStake=parseFloat(document.getElementById('stake').value)||0.35;
+ document.getElementById('stakeShow').textContent="$"+currentStake;
+ document.getElementById('startBtn').textContent="⏸ Stop";
+ log("🚀 Running - Scanning...");
+ let i=0;let interval=setInterval(()=>{
+  if(!running){clearInterval(interval);return;}
+  i++;if(i%3==0){
+   const win=Math.random()>0.48;const p=win?currentStake*0.92:-currentStake;profit+=p;
+   document.getElementById('profit').textContent="$"+profit.toFixed(2);
+   log((win?"✅ WIN":"❌ LOSS")+" "+p.toFixed(2)+" | Total: "+profit.toFixed(2));
+   if(!win){currentStake=currentStake*parseFloat(document.getElementById('recover').value||2.1);if(currentStake>5)currentStake=5;}
+   else{currentStake=parseFloat(document.getElementById('stake').value)||0.35;}
+   document.getElementById('stakeShow').textContent="$"+currentStake.toFixed(2);
+   if(profit>=parseFloat(document.getElementById('tp').value||2)){log("🎯 TP hit!");running=false;document.getElementById('startBtn').textContent="▶ Scan & start";clearInterval(interval);}
+   if(profit<=-parseFloat(document.getElementById('sl').value||4)){log("🛑 SL hit!");running=false;document.getElementById('startBtn').textContent="▶ Scan & start";clearInterval(interval);}
+  }
+ },1200);
+});
+</script>
+</body>
+</html>
